@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>프리랜서 검색 도우미</title>
+<style>
+  :root {
+    --bg: #eef3f9; --bg2: #f7f1fb; --card: #ffffff; --text: #1d2733; --muted: #5f6b7a; --line: #dbe3ec;
+    --brand1: #3b5bdb; --brand2: #1c9ad6; --brand3: #7b4fd6;
+    --ok-bg: #e2f6ea; --ok: #18794a; --copy-bg: #fff1df; --copy: #a35200;
+    --input-bg: #ffffff; --input-line: #b9c6d4; --chip: #f1f5fa;
+    --shadow: 0 6px 18px rgba(40, 60, 100, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1722; --bg2: #161226; --card: #1a2433; --text: #e6edf5; --muted: #9aa8b8; --line: #2c3a4d;
+      --ok-bg: #12382a; --ok: #6fdba3; --copy-bg: #3d2a12; --copy: #ffb766;
+      --input-bg: #111a26; --input-line: #3a4a60; --chip: #223045;
+      --shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1722; --bg2: #161226; --card: #1a2433; --text: #e6edf5; --muted: #9aa8b8; --line: #2c3a4d;
+    --ok-bg: #12382a; --ok: #6fdba3; --copy-bg: #3d2a12; --copy: #ffb766;
+    --input-bg: #111a26; --input-line: #3a4a60; --chip: #223045;
+    --shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; font-family: 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif; font-size: 14px;
+    color: var(--text); background: linear-gradient(160deg, var(--bg) 0%, var(--bg2) 100%) fixed;
+  }
+  main { max-width: 980px; margin: 0 auto; padding: 0 16px 40px; }
+
+  /* 상단 배너 */
+  .hero {
+    margin: 0 -16px 18px; padding: 26px 24px 64px; color: #fff;
+    background: linear-gradient(120deg, var(--brand1) 0%, var(--brand2) 55%, var(--brand3) 100%);
+    border-radius: 0 0 22px 22px;
+  }
+  .hero h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.3px; }
+  .hero p { margin: 0; opacity: 0.92; }
+  .hero .badges { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .hero .badges span { padding: 3px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.18); font-size: 12px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .search-card { margin-top: -52px; position: relative; }
+
+  label.field { display: block; font-weight: bold; margin-bottom: 6px; }
+  .hint { font-weight: normal; color: var(--muted); font-size: 12px; }
+  input[type=text] {
+    width: 100%; padding: 10px 12px; border: 1.5px solid var(--input-line); border-radius: 9px; font: inherit;
+    color: var(--text); background: var(--input-bg);
+  }
+  input#keyword:focus { outline: none; border-color: var(--brand1); box-shadow: 0 0 0 3px rgba(59, 91, 219, 0.18); }
+  input#exclude:focus { outline: none; border-color: #e0567a; box-shadow: 0 0 0 3px rgba(224, 86, 122, 0.18); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 680px) { .row { grid-template-columns: 1fr; } }
+
+  .summary { margin-top: 12px; padding: 9px 12px; border-radius: 9px; font-size: 13px; background: var(--chip); }
+  .summary code { padding: 1px 7px; border-radius: 5px; font-family: inherit; font-weight: bold; }
+  .summary code.inc { background: rgba(59, 91, 219, 0.14); color: var(--brand1); }
+  .summary code.exc { background: rgba(224, 86, 122, 0.15); color: #c23a61; text-decoration: line-through; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .summary code.inc { color: #8fa8ff; } }
+  :root[data-theme="dark"] .summary code.inc { color: #8fa8ff; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+  button { font: inherit; cursor: pointer; }
+  .btn { padding: 9px 16px; border-radius: 9px; border: 0; font-weight: bold; color: #fff; }
+  .btn.primary { background: linear-gradient(120deg, var(--brand1), var(--brand2)); }
+  .btn.google { background: linear-gradient(120deg, #4285f4, #34a853 50%, #fbbc05 75%, #ea4335); }
+  .btn:hover { filter: brightness(1.07); }
+  .btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: normal; padding: 6px 10px; margin-left: auto; }
+  .toast { color: var(--ok); font-size: 13px; font-weight: bold; }
+
+  /* 사이트 카드 */
+  .sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; margin-bottom: 16px; }
+  .site {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+  }
+  .site-head { padding: 12px 14px; color: #fff; background: linear-gradient(120deg, var(--c1), var(--c2)); }
+  .site-head b { font-size: 16px; }
+  .site-head small { display: block; opacity: 0.9; margin-top: 2px; }
+  .site-head .tag { float: right; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: bold; background: rgba(255, 255, 255, 0.92); color: var(--c1); }
+  .site-body { padding: 12px 14px 14px; display: flex; flex-wrap: wrap; gap: 7px; }
+  .site-body a, .site-body button {
+    display: inline-flex; align-items: center; gap: 4px; padding: 6px 11px; border-radius: 8px; font-size: 13px;
+    text-decoration: none; border: 1.5px solid var(--c1); color: var(--c1); background: transparent;
+  }
+  .site-body a.direct { background: var(--c1); color: #fff; font-weight: bold; }
+  .site-body a.g { border-color: var(--line); color: var(--muted); }
+  .site-body a:hover, .site-body button:hover { filter: brightness(1.1); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .site-body a:not(.direct), :root:not([data-theme="light"]) .site-body button { color: var(--c2); border-color: var(--c2); } }
+  :root[data-theme="dark"] .site-body a:not(.direct), :root[data-theme="dark"] .site-body button { color: var(--c2); border-color: var(--c2); }
+  .empty { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 30px 10px; background: var(--card);
+           border: 1.5px dashed var(--line); border-radius: 14px; }
+
+  .notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.8; }
+  .notes b { color: var(--text); }
+  .legend { display: inline-block; padding: 0 7px; border-radius: 5px; font-size: 12px; font-weight: bold; }
+  .legend.ok { background: var(--ok-bg); color: var(--ok); }
+  .legend.copy { background: var(--copy-bg); color: var(--copy); }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <h1>🧑‍💻 프리랜서 검색 도우미</h1>
+    <p>검색어를 넣으면 프리랜서 사이트 검색 결과를 브라우저에서 바로 엽니다. 사람이 직접 보는 방식이라 봇·크롤링 문제가 없습니다.</p>
+    <div class="badges"><span>위시켓</span><span>크몽</span><span>이랜서</span><span>원티드 긱스</span><span>프리모아</span><span>OKKY Jobs</span></div>
+  </header>
+
+  <section class="card search-card">
+    <div class="row">
+      <div>
+        <label class="field" for="keyword">🔎 검색어 <span class="hint">공백 = 모든 단어(AND), 쉼표 = 또는(OR)</span></label>
+        <input id="keyword" type="text" placeholder="예: 델파이, C# WPF, MFC" autocomplete="off">
+      </div>
+      <div>
+        <label class="field" for="exclude">🚫 제외 검색어 <span class="hint">쉼표로 구분</span></label>
+        <input id="exclude" type="text" placeholder="예: 파견, 쇼핑몰, 부산" autocomplete="off">
+      </div>
+    </div>
+    <div class="summary" id="summary">검색어를 입력하세요.</div>
+    <div class="actions">
+      <button class="btn primary" id="openDirect" type="button">바로 검색 결과 모두 열기</button>
+      <button class="btn google" id="openGoogle" type="button">구글 사이트 검색 모두 열기 (제외어 적용)</button>
+      <span class="toast" id="toast" role="status"></span>
+      <button class="btn ghost" id="theme" type="button" title="밝게/어둡게">🌓</button>
+    </div>
+  </section>
+
+  <section class="sites" id="sites"></section>
+
+  <section class="card">
+    <ul class="notes">
+      <li><span class="legend ok">바로 검색</span> 사이트 검색 결과가 바로 열립니다. 위시켓은 <b>마감 제외 · 최신순</b>으로 엽니다.</li>
+      <li><span class="legend copy">복사</span> 검색어 주소 형식이 공개되지 않은 사이트입니다. 목록이 열리면 사이트 검색창에 <b>Ctrl+V</b>로 붙여넣으세요.</li>
+      <li><b>구글 사이트 검색</b>: <code>site:주소 검색어 -제외어</code> 형식이라 <b>제외 검색어가 적용</b>됩니다. 대신 구글에 색인된 공고만 나오고 최신 공고는 늦게 반영될 수 있습니다.</li>
+      <li>쉼표로 여러 검색어를 넣으면 '바로 검색'은 검색어마다 탭이 하나씩 열립니다. 사이트 자체 검색은 제외어를 지원하지 않아 눈으로 걸러야 합니다.</li>
+      <li>"모두 열기"를 처음 누를 때 브라우저가 팝업을 막으면, 주소창 오른쪽의 팝업 차단 아이콘에서 <b>항상 허용</b>을 선택하세요.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+// ---------------------------------------------------------------- 사이트 목록
+// direct(query): 검색어(한 묶음) → 바로 검색 주소. 없으면 목록 열기 + 검색어 복사
+// c1, c2: 카드 색 (구분용 강조색)
+const SITES = [
+  { name: '위시켓', desc: 'IT 외주·기간제', domain: 'wishket.com', c1: '#2f6fe4', c2: '#4fa3f7',
+    direct: (q) => 'https://www.wishket.com/project/?d=' + encodeURIComponent(lzCompressToBase64(`q=${q}&ecd=True&srt=new`)) },
+  { name: '크몽', desc: '전문가 서비스 (경쟁·시세 확인)', domain: 'kmong.com', c1: '#d18a00', c2: '#f5b82e',
+    direct: (q) => 'https://kmong.com/search?type=gigs&keyword=' + encodeURIComponent(q) },
+  { name: '이랜서', desc: 'IT 프리랜서 (상주 많음)', domain: 'elancer.co.kr', c1: '#7048c9', c2: '#a37cf0',
+    list: 'https://www.elancer.co.kr/list-partner' },
+  { name: '원티드 긱스', desc: '기간제·재택 매칭', domain: 'wanted.co.kr/gigs', c1: '#1667d9', c2: '#36b0e6',
+    list: 'https://www.wanted.co.kr/gigs' },
+  { name: '프리모아', desc: '웹·앱 외주', domain: 'freemoa.net', c1: '#d83a4f', c2: '#f27a6b',
+    list: 'https://www.freemoa.net/m4/s41' },
+  { name: 'OKKY Jobs', desc: 'SI 상주 구인', domain: 'jobs.okky.kr', c1: '#148a62', c2: '#3cc28e',
+    list: 'https://jobs.okky.kr/' },
+];
+
+// ---------------------------------------------------------------- 검색어 해석 (job-search 워크플로우와 같은 규칙)
+function parseQuery(text) {
+  const seen = new Set();
+  const groups = [];
+  for (const raw of text.split(',')) {
+    const words = raw.trim().split(/\s+/).filter(Boolean);
+    const key = words.join(' ').toLowerCase();
+    if (words.length && !seen.has(key)) { seen.add(key); groups.push(words); }
+  }
+  return groups.slice(0, 3); // 워크플로우와 같게 최대 3묶음
+}
+
+function parseExcludes(text) {
+  const seen = new Set();
+  return text.split(',').map((w) => w.trim().replace(/\s+/g, ' ')).filter((w) => {
+    const k = w.toLowerCase();
+    if (!w || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+/** 구글 검색식: site:도메인 (A B) OR (C) -"제외어" */
+function googleQuery(domain, groups, excludes) {
+  const quote = (w) => (/\s/.test(w) ? `"${w}"` : w);
+  const terms = groups.map((g) => g.map(quote).join(' '));
+  const body = terms.length > 1 ? terms.map((t) => `(${t})`).join(' OR ') : terms[0];
+  const minus = excludes.map((w) => `-${quote(w)}`).join(' ');
+  return `site:${domain} ${body}${minus ? ' ' + minus : ''}`;
+}
+
+const googleUrl = (q) => 'https://www.google.com/search?q=' + encodeURIComponent(q);
+
+// ---------------------------------------------------------------- 화면
+const $ = (id) => document.getElementById(id);
+let toastTimer;
+
+function toast(text) {
+  $('toast').textContent = text;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => ($('toast').textContent = ''), 4000);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // 파일(file://)로 열었을 때 clipboard API가 막히는 브라우저 대비
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  }
+}
+
+function current() {
+  return { groups: parseQuery($('keyword').value), excludes: parseExcludes($('exclude').value) };
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function render() {
+  const { groups, excludes } = current();
+  try { localStorage.setItem('freelance-search', JSON.stringify({ k: $('keyword').value, e: $('exclude').value })); } catch {}
+
+  $('summary').innerHTML = groups.length
+    ? '검색 조건: ' + groups.map((g) => `<code class="inc">${esc(g.join(' '))}</code>` + (g.length > 1 ? ' (모든 단어)' : '')).join(' 또는 ')
+      + (excludes.length ? ` · 제외: ${excludes.map((w) => `<code class="exc">${esc(w)}</code>`).join(' ')}` : '')
+    : '검색어를 입력하세요.';
+
+  const box = $('sites');
+  if (!groups.length) {
+    box.innerHTML = '<div class="empty">검색어를 입력하면 사이트별 검색 링크가 만들어집니다.</div>';
+    return;
+  }
+  box.innerHTML = SITES.map((site) => {
+    const links = site.direct
+      ? groups.map((g) => `<a class="direct" href="${esc(site.direct(g.join(' ')))}" target="_blank" rel="noopener">🔎 ${esc(g.join(' '))}</a>`).join('')
+      : `<button type="button" data-copy-open="${esc(site.list)}">📋 목록 열기 + 검색어 복사</button>`;
+    const google = `<a class="g" href="${esc(googleUrl(googleQuery(site.domain, groups, excludes)))}" target="_blank" rel="noopener">G 구글 사이트 검색</a>`;
+    return `<article class="site" style="--c1:${site.c1};--c2:${site.c2}">
+      <div class="site-head"><span class="tag">${site.direct ? '바로 검색' : '복사'}</span><b>${esc(site.name)}</b><small>${esc(site.desc)}</small></div>
+      <div class="site-body">${links}${google}</div></article>`;
+  }).join('');
+}
+
+/** 복사할 검색어: 첫 번째 묶음 (사이트 검색창은 대부분 한 번에 하나) */
+const firstQuery = () => (current().groups[0] || []).join(' ');
+
+$('sites').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-copy-open]');
+  if (!btn) return;
+  const q = firstQuery();
+  window.open(btn.dataset.copyOpen, '_blank', 'noopener');
+  if (await copyText(q)) toast(`"${q}" 복사됨 — 사이트 검색창에 Ctrl+V`);
+});
+
+function openAll(urls) {
+  let blocked = 0;
+  for (const u of urls) if (!window.open(u, '_blank', 'noopener')) blocked++;
+  toast(blocked ? `팝업이 ${blocked}개 차단되었습니다 — 주소창의 팝업 차단 아이콘에서 허용하세요` : `${urls.length}개 탭을 열었습니다`);
+}
+
+$('openDirect').addEventListener('click', async () => {
+  const { groups } = current();
+  if (!groups.length) return toast('검색어를 입력하세요');
+  const urls = [];
+  for (const site of SITES) {
+    if (site.direct) groups.forEach((g) => urls.push(site.direct(g.join(' '))));
+    else urls.push(site.list);
+  }
+  await copyText(firstQuery());
+  openAll(urls);
+});
+
+$('openGoogle').addEventListener('click', () => {
+  const { groups, excludes } = current();
+  if (!groups.length) return toast('검색어를 입력하세요');
+  openAll(SITES.map((s) => googleUrl(googleQuery(s.domain, groups, excludes))));
+});
+
+// 밝게/어둡게 전환 (기본은 시스템 설정을 따름)
+$('theme').addEventListener('click', () => {
+  const dark = document.documentElement.dataset.theme
+    ? document.documentElement.dataset.theme === 'dark'
+    : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('freelance-search-theme', document.documentElement.dataset.theme); } catch {}
+});
+
+$('keyword').addEventListener('input', render);
+$('exclude').addEventListener('input', render);
+$('keyword').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('openDirect').click(); });
+
+try {
+  const theme = localStorage.getItem('freelance-search-theme');
+  if (theme) document.documentElement.dataset.theme = theme;
+  const saved = JSON.parse(localStorage.getItem('freelance-search') || 'null');
+  if (saved) { $('keyword').value = saved.k || ''; $('exclude').value = saved.e || ''; }
+} catch {}
+render();
+
+// ---------------------------------------------------------------- LZString.compressToBase64
+// 위시켓 검색 화면은 'q=검색어&ecd=True' 같은 조건을 이 방식으로 압축해 주소(?d=)에 넣습니다.
+// 원본: https://github.com/pieroxy/lz-string (MIT) — 필요한 함수만 옮김
+function lzCompressToBase64(input) {
+  const KEY = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  if (!input) return '';
+  const dict = new Map();
+  const toCreate = new Set();
+  let w = '', enlargeIn = 2, dictSize = 3, numBits = 2, val = 0, pos = 0;
+  const out = [];
+  const write = (value, count) => {
+    for (let i = 0; i < count; i++) {
+      val = (val << 1) | (value & 1);
+      if (pos === 5) { pos = 0; out.push(KEY[val]); val = 0; } else pos++;
+      value >>= 1;
+    }
+  };
+  const emit = (token) => {
+    if (toCreate.has(token)) {
+      const code = token.charCodeAt(0);
+      if (code < 256) { write(0, numBits); write(code, 8); } else { write(1, numBits); write(code, 16); }
+      if (--enlargeIn === 0) { enlargeIn = 2 ** numBits; numBits++; }
+      toCreate.delete(token);
+    } else {
+      write(dict.get(token), numBits);
+    }
+    if (--enlargeIn === 0) { enlargeIn = 2 ** numBits; numBits++; }
+  };
+  for (let i = 0; i < input.length; i++) {
+    const c = input.charAt(i); // JavaScript 문자열은 UTF-16 단위
+    if (!dict.has(c)) { dict.set(c, dictSize++); toCreate.add(c); }
+    const wc = w + c;
+    if (dict.has(wc)) w = wc;
+    else { emit(w); dict.set(wc, dictSize++); w = c; }
+  }
+  if (w !== '') emit(w);
+  write(2, numBits);
+  for (;;) { val <<= 1; if (pos === 5) { out.push(KEY[val]); break; } pos++; }
+  const res = out.join('');
+  return res + '='.repeat((4 - (res.length % 4)) % 4);
+}
+</script>
+</body>
+</html>
